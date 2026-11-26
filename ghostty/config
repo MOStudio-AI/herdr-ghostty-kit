@@ -1,0 +1,84 @@
+# ==============================================================================
+# Ghostty Configuration for Herdr (macOS · Catppuccin Macchiato · Leaderless)
+# Managed via symlinks by ./link.sh (MOStudio-AI)
+# ==============================================================================
+
+# Pass Cmd shortcuts through to Herdr and Neovim
+keybind = super+t=unbind
+keybind = super+w=unbind
+keybind = super+k=unbind
+keybind = super+e=unbind
+keybind = super+shift+g=unbind
+keybind = cmd+d=unbind
+keybind = cmd+shift+d=unbind
+keybind = ctrl+l=unbind
+
+# Herdr: Cmd+1..9 switch tabs (unbind Ghostty's default goto_tab / last_tab)
+keybind = super+1=unbind
+keybind = super+2=unbind
+keybind = super+3=unbind
+keybind = super+4=unbind
+keybind = super+5=unbind
+keybind = super+6=unbind
+keybind = super+7=unbind
+keybind = super+8=unbind
+keybind = super+9=unbind
+keybind = super+digit_1=unbind
+keybind = super+digit_2=unbind
+keybind = super+digit_3=unbind
+keybind = super+digit_4=unbind
+keybind = super+digit_5=unbind
+keybind = super+digit_6=unbind
+keybind = super+digit_7=unbind
+keybind = super+digit_8=unbind
+
+# Herdr: Cmd+[ / ] switch tabs; Cmd+Shift+[ / ] switch workspaces
+keybind = super+[=unbind
+keybind = super+]=unbind
+keybind = super+shift+[=unbind
+keybind = super+shift+]=unbind
+
+# Core behavior
+scrollback-limit = 100000
+macos-option-as-alt = true
+confirm-close-surface = false
+
+# ==============================================================================
+# 1. Theme & Translucent Background Image
+# ==============================================================================
+# Base surface (#24273a) and ANSI palette come strictly from Catppuccin Macchiato
+theme = Catppuccin Macchiato
+
+# Keep wallpaper subtle so terminal text stays crisp (tune between 0.08 and 0.18)
+background-image-opacity = 0.10
+background-image-fit = cover
+background-image-position = center
+background-image-repeat = false
+
+# ==============================================================================
+# 2. Typography, Cursor & Borderless macOS Window
+# ==============================================================================
+font-family = Maple Mono NF CN
+font-style = Medium
+font-size = 12.5
+
+cursor-style = bar
+cursor-style-blink = false
+
+macos-titlebar-style = hidden
+window-padding-x = 3
+window-padding-y = 0
+window-padding-balance = true
+
+# Launch Herdr on initial window open; detaching (Ctrl+b q) drops cleanly to login zsh
+initial-command = /bin/zsh -li -c "herdr; exec zsh -l"
+
+# ==============================================================================
+# 3. Focused-Pane Neon Glow Shader & Machine-Local Paths
+# ==============================================================================
+# Render shader only on screen updates (no idle animation loop)
+custom-shader-animation = false
+
+# Machine-local absolute paths for `background-image` and `custom-shader`.
+# Auto-generated at ~/.config/ghostty/local-paths.conf by ./link.sh (optional `?` prefix).
+config-file = ?local-paths.conf

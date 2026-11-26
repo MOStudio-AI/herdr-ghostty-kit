@@ -1,0 +1,143 @@
+onboarding = false
+
+# ==============================================================================
+# Theme: Built-in catppuccin (Mocha base) + full Catppuccin Macchiato overrides
+# Pairs with Ghostty's Catppuccin Macchiato theme (#24273a base)
+# ==============================================================================
+[theme]
+name = "catppuccin"
+
+[theme.custom]
+# Transparent panels & sidebar so Ghostty's base color and backdrop shine through
+panel_bg      = "transparent"
+sidebar_bg    = "transparent"
+# Focused highlight color (must match ACCENT_COLOR in herdr-focus-glow.glsl)
+accent        = "#18ecff"
+# Catppuccin Macchiato surface & border hierarchy
+active_row_bg = "#363a4f"   # surface0
+selection_bg  = "#494d64"   # surface1
+overlay0      = "#6e738d"
+overlay1      = "#8087a2"
+subtext0      = "#a5adcb"
+# Catppuccin Macchiato text & agent status colors
+text          = "#cad3f5"
+red           = "#ed8796"   # blocked / needs attention
+yellow        = "#eed49f"   # working
+green         = "#a6da95"
+teal          = "#8bd5ca"   # done (unread)
+
+# ==============================================================================
+# UI
+# ==============================================================================
+[ui]
+agent_panel_sort = "priority"
+prompt_new_tab_name = false
+status_indicators = "dots"
+copy_on_select = false
+show_agent_labels_on_pane_borders = true
+pane_scrollbars = false
+sidebar_collapsed_mode = "compact"
+sidebar_width = 34        # Wide enough for clean titles on high-DPI displays
+sidebar_max_width = 44
+# hide_tab_bar_when_single_tab = true
+
+tab_bar_right = [
+  { type = "zoom", format = "[ZOOM]" },
+  { type = "datetime", format = "%H:%M" },
+]
+
+[ui.sidebar.spaces]
+row_gap = 0   # Compact single-row workspaces to maximize room for the Agents list
+rows = [
+  ["state_icon", "workspace", "branch", "git_status"],
+]
+
+[ui.sidebar.agents]
+row_gap = 0   # Dimmed second row separates entries cleanly without blank gaps
+rows = [
+  ["state_icon", "workspace", "agent"],
+  [{ token = "tab", dim = true }],
+]
+
+[ui.toast]
+delivery = "herdr"
+delay_seconds = 1
+
+[ui.sound]
+enabled = true
+
+[experimental]
+switch_ascii_input_source_in_prefix = true
+reveal_hidden_cursor_for_cjk_ime = true
+cjk_ime_agents = ["claude", "codex", "pi"]
+
+# ==============================================================================
+# Keybindings: Leaderless direct chords first; prefix kept as SSH fallback
+# ==============================================================================
+[keys]
+prefix = "ctrl+b"
+
+# --- Panes: DWM + Vim layer (Alt) ---
+focus_pane_left  = ["alt+h", "prefix+h"]
+focus_pane_down  = ["alt+j", "prefix+j"]
+focus_pane_up    = ["alt+k", "prefix+k"]
+focus_pane_right = ["alt+l", "prefix+l"]
+
+swap_pane_left  = "alt+shift+h"
+swap_pane_down  = "alt+shift+j"
+swap_pane_up    = "alt+shift+k"
+swap_pane_right = "alt+shift+l"
+
+resize_pane_left  = "ctrl+alt+h"
+resize_pane_down  = "ctrl+alt+j"
+resize_pane_up    = "ctrl+alt+k"
+resize_pane_right = "ctrl+alt+l"
+
+last_pane        = "alt+tab"
+zoom             = ["alt+z", "prefix+z"]
+toggle_sidebar   = ["cmd+b", "prefix+b"]          # Leave alt+b free for backward-word in Zsh/Claude/Codex
+close_pane       = ["alt+shift+q", "prefix+x"]    # Require Shift to prevent accidentally killing an active agent
+split_vertical   = ["alt+v", "cmd+d", "prefix+v"]
+split_horizontal = ["alt+s", "cmd+shift+d", "prefix+minus"]
+copy_mode        = "alt+y"
+edit_scrollback  = ["alt+e", "prefix+e"]
+
+# --- Workspaces & Multi-Agent triage layer ---
+switch_workspace         = "alt+1..9"
+previous_workspace       = "cmd+shift+["
+next_workspace           = "cmd+shift+]"
+new_workspace            = ["cmd+shift+n", "prefix+shift+n"]
+rename_workspace         = ["alt+shift+r", "prefix+shift+w"]
+next_agent               = "alt+n"
+previous_agent           = "alt+shift+n"                 # Leave alt+p free for Claude Code model picker
+focus_agent              = "ctrl+alt+1..9"               # Jump directly to agent #1..9 in priority queue
+open_notification_target = ["alt+a", "prefix+o"]         # Leave alt+o free for Claude Code fast mode
+goto                     = ["cmd+k", "alt+g", "prefix+g"]
+
+# --- Tabs: macOS browser-native layer (Cmd) ---
+new_tab           = ["cmd+t", "prefix+c"]
+close_tab         = ["cmd+w", "prefix+shift+x"]
+rename_tab        = ["alt+r", "prefix+shift+t"]
+switch_tab        = ["cmd+1..9", "prefix+1..9"]
+previous_tab      = ["cmd+[", "prefix+p"]
+next_tab          = ["cmd+]", "prefix+n"]
+move_tab_previous = "cmd+shift+left"
+move_tab_next     = "cmd+shift+right"
+
+# Lazygit popup (opens in the focused pane's CWD; press q to close)
+[[keys.command]]
+key = ["cmd+shift+g", "alt+shift+g", "prefix+d"]
+type = "popup"
+command = "cd \"${HERDR_ACTIVE_PANE_CWD:-.}\" && exec lazygit"
+description = "Git status"
+width = "90%"
+height = "85%"
+
+# Live keybindings cheatsheet popup (parsed from config.toml; q/Esc to close, / to filter)
+[[keys.command]]
+key = ["cmd+slash", "f1"]
+type = "popup"
+command = "exec \"$HOME/.config/herdr/cheatsheet.py\""
+description = "Keybindings cheatsheet"
+width = "92%"
+height = "88%"

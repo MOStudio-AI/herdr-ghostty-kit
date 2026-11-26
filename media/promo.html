@@ -1,0 +1,802 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Leaderless Herdr + Ghostty — promo scene</title>
+<!--
+  Frame-accurate promo scene. Every visual is a pure function of `seek(t)`:
+  no CSS transitions, no requestAnimationFrame, so render-promo.mjs can step
+  headless Chrome frame by frame. The terminal UI below is a hand-built mock of
+  Herdr + Ghostty (fictional workspaces / agents), not a screen capture.
+-->
+<style>
+  :root {
+    --base: #24273a; --mantle: #1e2030; --crust: #181926;
+    --s0: #363a4f; --s1: #494d64; --s2: #5b6078;
+    --o0: #6e738d; --o1: #8087a2; --sub0: #a5adcb; --sub1: #b8c0e0; --text: #cad3f5;
+    --cyan: #18ecff; --gold: #eed49f; --green: #a6da95; --teal: #8bd5ca;
+    --red: #ed8796; --mauve: #c6a0f6; --blue: #8aadf4; --peach: #f5a97f;
+    --mono: "Maple Mono NF CN", ui-monospace, monospace;
+    --sans: "Inter", "SF Pro Display", -apple-system, system-ui, sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { width: 100%; height: 100%; background: #000; overflow: hidden; }
+  #stage { position: absolute; inset: 0; overflow: hidden; background: var(--crust);
+           font-family: var(--sans); color: var(--text); -webkit-font-smoothing: antialiased; }
+  .abs { position: absolute; }
+  #bg { position: absolute; left: 0; top: 0; width: 100%; height: 100%; object-fit: cover;
+        transform-origin: 30% 60%; }
+  #bgshade { position: absolute; inset: 0;
+    background: radial-gradient(120% 90% at 50% 45%, rgba(24,25,38,0) 0%, rgba(24,25,38,.55) 70%, rgba(12,13,20,.9) 100%); }
+  #grain { position: absolute; inset: 0; pointer-events: none; opacity: .05; mix-blend-mode: overlay;
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='240' height='240'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .9 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>"); }
+  #fade { position: absolute; inset: 0; background: #000; pointer-events: none; }
+
+  /* ---------- Scene 1 ---------- */
+  #s1 { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .pill { font: 600 17px var(--mono); letter-spacing: .08em; color: var(--sub0);
+          padding: 9px 18px; border-radius: 999px; border: 1px solid rgba(202,211,245,.16);
+          background: rgba(30,32,48,.55); backdrop-filter: blur(10px); }
+  .pill b { color: var(--cyan); font-weight: 700; }
+  #title { margin-top: 34px; font: 700 104px/1.04 var(--sans); letter-spacing: -.035em; white-space: nowrap; }
+  #title span { display: inline-block; margin: 0 .13em;
+    background: linear-gradient(180deg, #ffffff 0%, #cad3f5 100%); -webkit-background-clip: text; color: transparent; }
+  #title span.accent { background: linear-gradient(180deg, #8ff7ff 0%, #18ecff 70%); -webkit-background-clip: text; }
+  #subtitle { margin-top: 22px; font: 500 31px var(--sans); color: var(--sub0); letter-spacing: -.01em; }
+  #keyrow { margin-top: 46px; display: flex; align-items: center; gap: 22px; }
+  .cap { display: inline-flex; align-items: center; justify-content: center; min-width: 54px; height: 54px; padding: 0 16px;
+         font: 700 24px var(--mono); color: var(--text); border-radius: 12px;
+         background: linear-gradient(180deg, #414560 0%, #363a4f 100%);
+         border: 1px solid rgba(202,211,245,.14); box-shadow: 0 3px 0 #1e2030, 0 8px 22px rgba(0,0,0,.35); }
+  .cap.cy { color: #0d1a24; background: linear-gradient(180deg, #7ff6ff 0%, #18ecff 100%); border-color: rgba(255,255,255,.4);
+            box-shadow: 0 3px 0 #0b8ea0, 0 0 26px rgba(24,236,255,.55), 0 0 60px rgba(24,236,255,.25); }
+  .plus { font: 500 24px var(--mono); color: var(--o1); }
+  .combo { position: relative; display: flex; align-items: center; gap: 10px; }
+  .strike { position: absolute; left: -10px; top: 50%; height: 3px; border-radius: 2px; background: var(--red);
+            box-shadow: 0 0 12px rgba(237,135,150,.7); transform-origin: left center; }
+  .arrow { font: 500 30px var(--sans); color: var(--o1); }
+
+  /* ---------- Chapter caption ---------- */
+  #chapter { position: absolute; left: 0; right: 0; top: 30px; text-align: center; white-space: nowrap;
+             font: 650 30px var(--sans); letter-spacing: -.015em; color: #e6ebff; }
+  #chapter .eb { font: 700 15px var(--mono); letter-spacing: .14em; color: var(--cyan); margin-right: 16px;
+                 padding: 5px 10px; border-radius: 6px; border: 1px solid rgba(24,236,255,.35); vertical-align: 5px; }
+
+  /* ---------- Terminal window (Ghostty + Herdr mock) ---------- */
+  #win { position: absolute; border-radius: 14px; overflow: hidden; background: var(--base);
+         border: 1px solid rgba(202,211,245,.10);
+         box-shadow: 0 40px 120px rgba(0,0,0,.65), 0 12px 40px rgba(0,0,0,.45), inset 0 1px 0 rgba(255,255,255,.04); }
+  #winbg { position: absolute; inset: 0; background-size: cover; background-position: 30% 60%; opacity: .10; }
+  #ui { position: absolute; inset: 0; font: 400 14px/19px var(--mono); color: var(--text); }
+  .sb { position: absolute; left: 0; top: 0; bottom: 0; overflow: hidden; border-right: 1px solid rgba(110,115,141,.28); }
+  .sbin { position: absolute; left: 0; top: 0; width: 300px; padding: 12px 0 0 0; }
+  .sbh { padding: 0 14px; height: 22px; font: 700 12px/22px var(--mono); letter-spacing: .14em; color: var(--o1); }
+  .row { position: absolute; left: 6px; right: 6px; padding: 0 8px; white-space: nowrap; overflow: hidden; border-radius: 5px; }
+  .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin: 0 9px 1px 1px; vertical-align: middle; }
+  .hl { position: absolute; left: 6px; right: 6px; border-radius: 5px; background: #363a4f; }
+  .rail { position: absolute; left: 0; top: 0; width: 44px; }
+  .tabbar { position: absolute; top: 0; height: 30px; display: flex; align-items: center; white-space: nowrap; }
+  .tab { height: 22px; line-height: 22px; padding: 0 12px; margin-right: 4px; border-radius: 5px; color: var(--o1); }
+  .tab.on { background: #363a4f; color: var(--text); box-shadow: inset 0 -2px 0 var(--cyan); }
+  .tbr { position: absolute; right: 14px; top: 0; height: 30px; line-height: 30px; color: var(--o1); white-space: nowrap; }
+  .zoomb { color: var(--cyan); font-weight: 700; margin-right: 14px; }
+  .pane { position: absolute; border-radius: 7px; border: 1.5px solid rgba(110,115,141,.55); overflow: hidden; }
+  .pane .pc { position: absolute; left: 14px; top: 14px; right: 10px; bottom: 0; white-space: pre; overflow: hidden; }
+  .plabel { position: absolute; top: -10px; left: 14px; padding: 0 7px; background: var(--base);
+            font: 600 13px/19px var(--mono); color: var(--o1); border-radius: 3px; }
+  .ring { position: absolute; border-radius: 7px; border: 2px solid var(--cyan); pointer-events: none; }
+  .ringlabel { position: absolute; top: -11px; left: 14px; padding: 0 7px; background: var(--base);
+               font: 700 13px/19px var(--mono); color: var(--cyan); border-radius: 3px; text-shadow: 0 0 10px rgba(24,236,255,.6); }
+  .status { position: absolute; left: 0; right: 0; bottom: 0; height: 22px; line-height: 22px; background: #1e2030; white-space: nowrap; }
+  .status .md { display: inline-block; padding: 0 12px; background: var(--blue); color: #1e2030; font-weight: 700; }
+  .box { border: 1px solid; border-radius: 6px; padding: 6px 10px; margin: 4px 0; white-space: pre; }
+  .c { color: var(--cyan); } .y { color: var(--gold); } .g { color: var(--green); } .r { color: var(--red); }
+  .m { color: var(--mauve); } .b { color: var(--blue); } .t { color: var(--text); } .d { color: var(--o1); }
+  .s { color: var(--sub0); } .p { color: var(--peach); } .tl { color: var(--teal); } .dd { color: var(--o0); }
+  .bold { font-weight: 700; }
+  .toast { position: absolute; width: 380px; padding: 12px 16px 12px 18px; border-radius: 9px; background: rgba(30,32,48,.96);
+           border: 1px solid rgba(237,135,150,.45); box-shadow: 0 18px 40px rgba(0,0,0,.45), 0 0 24px rgba(237,135,150,.18); }
+  .toast:before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 2px; background: var(--red); }
+
+  /* Cheatsheet popup */
+  .dim { position: absolute; inset: 0; background: rgba(15,16,26,.58); }
+  .pop { position: absolute; border-radius: 9px; background: rgba(30,32,48,.985); border: 1.5px solid #494d64;
+         box-shadow: 0 30px 80px rgba(0,0,0,.6); overflow: hidden; font: 400 16px/26px var(--mono); }
+  .pophd { position: absolute; left: 0; right: 0; top: 0; height: 46px; padding: 0 20px; line-height: 46px; white-space: nowrap;
+           border-bottom: 1px solid #494d64; }
+  .col { position: absolute; top: 58px; overflow: hidden; }
+  .sec { white-space: nowrap; overflow: hidden; font-weight: 700; }
+  .it { white-space: nowrap; overflow: hidden; }
+  .kp { display: inline-block; padding: 0 8px; border-radius: 4px; background: #363a4f; font-weight: 700; line-height: 22px; }
+  .popft { position: absolute; left: 0; right: 0; bottom: 0; height: 40px; line-height: 40px; padding: 0 18px; white-space: nowrap;
+           border-top: 1px solid #494d64; color: var(--o1); }
+  .fbar { display: inline-block; padding: 0 10px; background: #363a4f; color: var(--cyan); font-weight: 700; line-height: 26px; border-radius: 4px; }
+
+  /* ---------- HUD key capsule ---------- */
+  #hud { position: absolute; display: flex; align-items: center; gap: 10px; padding: 11px 20px 11px 14px; border-radius: 18px;
+         background: rgba(24,25,38,.82); backdrop-filter: blur(16px); border: 1px solid rgba(202,211,245,.16);
+         box-shadow: 0 18px 50px rgba(0,0,0,.55), 0 0 0 1px rgba(0,0,0,.3); white-space: nowrap; transform-origin: 50% 50%; }
+  #hud .cap { height: 46px; min-width: 46px; font-size: 21px; padding: 0 13px; border-radius: 10px; }
+  #hud .plus { font-size: 20px; }
+  #hud .hcap { margin-left: 10px; padding-left: 16px; border-left: 1px solid rgba(202,211,245,.16);
+               font: 500 21px var(--sans); color: var(--sub1); }
+
+  /* ---------- Scene 5 ---------- */
+  #wall { position: absolute; left: 0; top: 0; transform-origin: 0 0; }
+  #cap5 { position: absolute; left: 76px; top: 96px; width: 540px; }
+  #cap5 .eb2 { font: 700 15px var(--mono); letter-spacing: .14em; color: var(--gold); }
+  #cap5 h2 { margin-top: 14px; font: 700 48px/1.1 var(--sans); letter-spacing: -.03em; color: #f0f3ff; }
+  #cap5 p { margin-top: 18px; font: 500 21px/1.5 var(--sans); color: var(--sub0); }
+  #cap5 code { font: 600 19px var(--mono); color: var(--cyan); background: rgba(24,236,255,.08);
+               border: 1px solid rgba(24,236,255,.25); padding: 2px 8px; border-radius: 6px; }
+  #shade5 { position: absolute; inset: 0;
+    background: linear-gradient(90deg, rgba(18,19,30,.82) 0%, rgba(18,19,30,.45) 38%, rgba(18,19,30,0) 62%); }
+  #end { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  #end .mark { display: flex; align-items: center; gap: 22px; }
+  #end .logo { width: 74px; height: 74px; border-radius: 18px; position: relative;
+               background: linear-gradient(145deg, #2b2f45, #1e2030); border: 1.5px solid rgba(24,236,255,.55);
+               box-shadow: 0 0 30px rgba(24,236,255,.35), inset 0 0 18px rgba(24,236,255,.15); }
+  #end .logo i { position: absolute; border-radius: 3px; border: 2px solid var(--cyan); }
+  #end h1 { font: 750 92px var(--sans); letter-spacing: -.04em; color: #f4f6ff; }
+  #end .tag { margin-top: 18px; font: 500 30px var(--sans); color: var(--sub0); }
+  #end .tag b { color: var(--cyan); font-weight: 650; }
+  #end .chips { margin-top: 46px; display: flex; gap: 18px; }
+  #end .chip { font: 600 21px var(--mono); padding: 12px 20px; border-radius: 12px; color: var(--text);
+               background: rgba(30,32,48,.72); border: 1px solid rgba(202,211,245,.16); }
+  #end .chip b { color: var(--gold); }
+  #end .url { margin-top: 40px; font: 600 20px var(--mono); color: var(--o1); letter-spacing: .04em; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <img id="bg" alt="">
+  <div id="bgshade"></div>
+  <img id="wall" alt="">
+  <div id="shade5"></div>
+  <div id="cap5">
+    <div class="eb2">04 · DESKTOP</div>
+    <h2>Same keymap.<br>Now on your desktop.</h2>
+    <p>A 5K wallpaper cheatsheet, rendered from<br>the same <code>config.toml</code> as the popup.<br>Change a key, re-run one script.</p>
+  </div>
+  <div id="s1">
+    <div class="pill"><b>MOStudio-AI</b> · open source</div>
+    <div id="title"></div>
+    <div id="subtitle">Leaderless DWM + Vim workflow for Herdr &amp; Ghostty</div>
+    <div id="keyrow">
+      <div class="combo" id="oldcombo"><span class="cap">Ctrl</span><span class="plus">+</span><span class="cap">B</span><span class="plus">…</span><span class="cap">L</span><div class="strike" id="strike"></div></div>
+      <div class="arrow" id="arrow">→</div>
+      <div class="combo" id="newcombo"><span class="cap cy">Alt</span><span class="plus">+</span><span class="cap cy">L</span></div>
+    </div>
+  </div>
+  <div id="chapter"></div>
+  <div id="win"><div id="winbg"></div><div id="ui"></div></div>
+  <div id="hud"></div>
+  <div id="end">
+    <div class="mark"><div class="logo"><i style="left:14px;top:16px;width:20px;height:42px"></i><i style="left:38px;top:16px;width:22px;height:18px"></i><i style="left:38px;top:38px;width:22px;height:20px;border-color:#6e738d"></i></div><h1>MOStudio-AI</h1></div>
+    <div class="tag"><b>Ditch the Prefix Key.</b> Leaderless Herdr + Ghostty, ready to fork.</div>
+    <div class="chips"><div class="chip"><b>MIT</b> License</div><div class="chip">One-command <b>./link.sh</b> setup</div><div class="chip">Herdr <b>0.9.5</b> · Ghostty <b>1.4</b></div></div>
+    <div class="url">github.com/MOStudio-AI</div>
+  </div>
+  <div id="grain"></div>
+  <div id="fade"></div>
+</div>
+
+<script>
+"use strict";
+// ---------------------------------------------------------------- utilities
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const seg = (t, a, b) => clamp((t - a) / (b - a));
+const lerp = (a, b, k) => a + (b - a) * k;
+const eout = x => 1 - Math.pow(1 - x, 3);
+const eout5 = x => 1 - Math.pow(1 - x, 5);
+const eio = x => (x < .5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const back = x => { const c1 = 1.5, c3 = c1 + 1; return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2); };
+const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const $ = id => document.getElementById(id);
+const lr = (a, b, k) => ({ x: lerp(a.x, b.x, k), y: lerp(a.y, b.y, k), w: lerp(a.w, b.w, k), h: lerp(a.h, b.h, k) });
+// "{c}text{d}more" -> colored spans
+function M(src) {
+  let out = "", cls = "t";
+  for (const part of String(src).split(/(\{[a-z]+\})/)) {
+    const m = part.match(/^\{([a-z]+)\}$/);
+    if (m) { cls = m[1]; continue; }
+    if (part) out += `<span class="${cls}">${esc(part)}</span>`;
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- mode / layout
+let MODE = "promo", DATA = null, W = 1920, H = 1080;
+let WIN = { x: 160, y: 104, w: 1600, h: 892 };
+const TAB_H = 30, SB_FULL = 300, SB_COMPACT = 44, GAP = 10;
+
+// ---------------------------------------------------------------- mock content (fictional)
+const STATUS_COLOR = { blocked: "#ed8796", done: "#8bd5ca", working: "#eed49f", idle: "#6e738d" };
+const RANK = { blocked: 0, done: 1, working: 2, idle: 3 };
+const SPACES = [
+  { name: "api-gateway",   branch: "main",           git: "+3 ~2" },
+  { name: "web-console",   branch: "feat/auth-flow", git: "~4" },
+  { name: "infra",         branch: "main",           git: "✓" },
+  { name: "docs-site",     branch: "main",           git: "✓" },
+  { name: "mobile-app",    branch: "release/2.4",    git: "+1" },
+  { name: "data-pipeline", branch: "main",           git: "~1" },
+  { name: "design-system", branch: "tokens-v3",      git: "✓" },
+  { name: "cli-tools",     branch: "main",           git: "+2" },
+];
+const AGENTS = [
+  { id: "a0", ws: 0, agent: "claude", tab: "Token-bucket rate limiter", st: "working" },
+  { id: "a1", ws: 0, agent: "codex",  tab: "Review limiter diff",       st: "done" },
+  { id: "a2", ws: 1, agent: "claude", tab: "Auth flow: PKCE refresh",   st: "working" },
+  { id: "a3", ws: 1, agent: "pi",     tab: "Fix flaky e2e login",       st: "idle" },
+  { id: "a4", ws: 2, agent: "codex",  tab: "Plan: trim NAT egress",     st: "done" },
+  { id: "a5", ws: 4, agent: "claude", tab: "Migrate push tokens",       st: "working", dyn: true },
+  { id: "a6", ws: 4, agent: "agy",    tab: "Offline cache spike",       st: "idle" },
+  { id: "a7", ws: 5, agent: "claude", tab: "Backfill partitions",       st: "working" },
+  { id: "a8", ws: 6, agent: "codex",  tab: "Audit color tokens",        st: "idle" },
+  { id: "a9", ws: 7, agent: "pi",     tab: "Shell completions",         st: "idle" },
+];
+function agentStatus(a, S) {
+  if (!a.dyn) return a.st;
+  if (S.resolved) return "working";
+  if (S.blocked) return "blocked";
+  return a.st;
+}
+function spaceStatus(i, S) {
+  let best = "idle";
+  for (const a of AGENTS) if (a.ws === i) { const s = agentStatus(a, S); if (RANK[s] < RANK[best]) best = s; }
+  return best;
+}
+
+const PANES = {
+  0: { tabs: ["1 limiter", "2 logs", "3 bench"], panes: {
+    claude: { label: "claude", lines: [
+      "{c}✻ {t}Token-bucket rate limiter", "{dd}  ~/src/api-gateway · main", "",
+      "{g}● {t}Read{d}(src/limiter.rs)", "{d}  └  Read 142 lines", "",
+      "{g}● {t}Update{d}(src/limiter.rs)", "{d}  └  18 additions, 7 removals",
+      "{dd}   41 {r}-   let window = Window::fixed(60);",
+      "{dd}   41 {g}+   let bucket = TokenBucket::new(cfg.burst, cfg.rate);",
+      "{dd}   42 {g}+   bucket.refill_every(Duration::from_millis(250));",
+      "{dd}   43 {t}    if !bucket.try_take(cost) {",
+      "{dd}   44 {r}-       return Err(Limited::Window);",
+      "{dd}   44 {g}+       return Err(Limited::Retry(bucket.eta(cost)));", "",
+      "{g}● {t}Bash{d}(cargo test limiter)", "{d}  └  {g}test result: ok.{d} 12 passed; 0 failed", "",
+      "{y}✻ {s}Wiring metrics… {dd}(esc to interrupt)", "",
+      { box: "{t}> {d}add a p99 latency panel to the dashboard", color: "#494d64" },
+    ] },
+    codex: { label: "codex", lines: [
+      "{m}› {t}Review uncommitted changes", "{dd}  3 files · +41 −12", "",
+      "{s}• {t}limiter.rs:44 {d}— retry hint can go negative",
+      "{d}    when burst < cost; clamp to zero.",
+      "{s}• {t}config.rs:12 {d}— new {y}burst{d} key has no default.",
+      "{s}• {t}tests/ {d}— add a refill-boundary case.", "",
+      "{g}✓ {s}3 findings · 0 blocking",
+    ] },
+    nvim: { label: "nvim", status: ["NORMAL", "src/limiter.rs", "rust", "44:13"], lines: [
+      "{dd} 38 {m}impl{t} Limiter {",
+      "{dd} 39 {t}    {m}pub fn {b}check{t}(&{m}mut{t} self, cost: {y}u32{t}) -> {y}Result{t}<()> {",
+      "{dd} 40 {t}        {m}let{t} bucket = &{m}mut{t} self.bucket;",
+      "{dd} 41 {t}        {m}if{t} !bucket.{b}try_take{t}(cost) {",
+      "{dd} 42 {t}            {m}return {y}Err{t}(Limited::{y}Retry{t}(bucket.{b}eta{t}(cost)));",
+      "{dd} 43 {t}        }",
+      "{dd} 44 {t}        {y}Ok{t}(())",
+      "{dd} 45 {t}    }",
+      "{dd} 46 {t}}",
+    ] },
+  } },
+  1: { tabs: ["1 auth", "2 e2e"], panes: {
+    claude: { label: "claude", lines: [
+      "{c}✻ {t}Auth flow: PKCE refresh", "{dd}  ~/src/web-console · feat/auth-flow", "",
+      "{g}● {t}Update{d}(src/auth/session.ts)", "{d}  └  9 additions, 3 removals",
+      "{dd}   27 {g}+ const verifier = await pkce.challenge()",
+      "{dd}   28 {g}+ await refresh({ verifier, rotate: true })", "",
+      "{y}✻ {s}Running vitest… {dd}(esc to interrupt)",
+    ] },
+    codex: { label: "pi", lines: [
+      "{b}π {t}Fix flaky e2e login", "", "{s}• {t}login.spec.ts {d}waits on a fixed 500ms;",
+      "{d}  switching to {g}expect(page).toHaveURL{d}.", "", "{g}✓ {s}10/10 green locally",
+    ] },
+    nvim: { label: "nvim", status: ["NORMAL", "src/auth/session.ts", "ts", "28:5"], lines: [
+      "{dd} 26 {m}export async function {b}renew{t}() {",
+      "{dd} 27 {t}  {m}const{t} verifier = {m}await{t} pkce.{b}challenge{t}()",
+      "{dd} 28 {t}  {m}await {b}refresh{t}({ verifier, rotate: {p}true{t} })",
+      "{dd} 29 {t}}",
+    ] },
+  } },
+  2: { tabs: ["1 plan", "2 shell"], panes: {
+    claude: { label: "codex", lines: [
+      "{m}› {t}Plan: trim NAT egress", "", "{s}• {t}Move S3 traffic to a gateway endpoint",
+      "{s}• {t}Drop idle NAT in us-east-1c", "", "{g}✓ {s}Plan saved to {c}docs/nat.md",
+    ] },
+    codex: { label: "claude", lines: [
+      "{c}✻ {t}Draft terraform changes", "", "{g}● {t}Write{d}(vpc/endpoints.tf)", "{d}  └  32 lines",
+    ] },
+    nvim: { label: "zsh", lines: [
+      "{g}❯ {t}terraform plan", "", "{d}  # aws_vpc_endpoint.s3 {g}will be created",
+      "{d}  # aws_nat_gateway.c {r}will be destroyed", "", "{t}Plan: {g}1 to add{t}, 0 to change, {r}1 to destroy{t}.",
+    ] },
+  } },
+  4: { tabs: ["1 push", "2 cache"], panes: {
+    claude: { label: "claude", blocked: true, lines: [
+      "{c}✻ {t}Migrate push tokens", "{dd}  ~/src/mobile-app · release/2.4", "",
+      "{g}● {t}Read{d}(src/push/tokens.ts)", "{d}  └  Read 88 lines", "",
+      "{g}● {t}Update{d}(src/push/tokens.ts)",
+      "{dd}   14 {g}+ const token = await rotate(device, { api: 'v2' })",
+      "{dd}   15 {r}- const token = legacyToken(device)", "",
+    ] },
+    codex: { label: "agy", lines: [
+      "{p}◆ {t}Offline cache spike", "", "{s}• {t}SQLite vs MMKV for 20k rows", "{d}  benchmarks queued…",
+    ] },
+    nvim: { label: "nvim", status: ["NORMAL", "src/push/tokens.ts", "ts", "14:9"], lines: [
+      "{dd} 12 {m}export async function {b}register{t}(device) {",
+      "{dd} 13 {t}  {dd}// v2 rotates on every launch",
+      "{dd} 14 {t}  {m}const{t} token = {m}await {b}rotate{t}(device, { api: {g}'v2'{t} })",
+      "{dd} 15 {t}  {m}return {b}save{t}(token)",
+      "{dd} 16 {t}}",
+    ] },
+  } },
+};
+const PROMPT_BOX = { box: "{t}Allow edit to {c}src/push/tokens.ts{t}?\n{c}❯ 1. Yes\n{t}  2. Yes, and don't ask again\n{t}  3. No", color: "#ed8796" };
+const RESOLVED_LINES = ["{g}● {t}Edited{d}(src/push/tokens.ts) {g}+14 {r}−6", "", "{y}✻ {s}Running jest --watch=false… {dd}(esc to interrupt)"];
+
+// ---------------------------------------------------------------- timeline
+const EV_PROMO = [
+  { t: 4.9,  keys: ["Alt", "L"],      cap: "focus right",   a: { focus: "codex" } },
+  { t: 5.8,  keys: ["Alt", "J"],      cap: "focus down",    a: { focus: "nvim" } },
+  { t: 6.7,  keys: ["Alt", "⇧", "H"], cap: "swap left",     a: { swap: true } },
+  { t: 7.8,  keys: ["Alt", "Z"],      cap: "zoom  [ZOOM]",  a: { zoom: true } },
+  { t: 9.0,  keys: ["Alt", "Z"],      cap: "unzoom",        a: { zoom: false } },
+  { t: 10.55, keys: ["Alt", "2"],     cap: "space 2",       a: { ws: 1, focus: "claude" } },
+  { t: 11.45, keys: ["Alt", "3"],     cap: "space 3",       a: { ws: 2, focus: "claude" } },
+  { t: 12.2,                                                 a: { blocked: true } },
+  { t: 13.35, keys: ["Alt", "A"],     cap: "jump to the blocked agent", a: { ws: 4, focus: "claude" } },
+  { t: 14.25,                                                a: { resolved: true } },
+  { t: 14.95, keys: ["⌘", "B"],       cap: "compact sidebar", a: { sidebar: "compact" } },
+  { t: 16.55, keys: ["⌘", "/"],       cap: "live cheatsheet", a: { popup: true } },
+  { t: 17.65, keys: ["/"],            cap: "filter",        a: { filter: true } },
+  { t: 18.05, a: { query: "a" } }, { t: 18.2, a: { query: "ag" } }, { t: 18.35, a: { query: "age" } },
+  { t: 18.5, a: { query: "agen" } }, { t: 18.65, a: { query: "agent" } },
+  { t: 19.95, keys: ["Esc"],          cap: "clear filter",  a: { filter: false, query: "" } },
+  { t: 20.85, keys: ["Esc"],          cap: "close",         a: { popup: false } },
+];
+const EV_GIF = [
+  { t: 4.9,  keys: ["Alt", "L"],      cap: "focus right", a: { focus: "codex" } },
+  { t: 5.8,  keys: ["Alt", "J"],      cap: "focus down",  a: { focus: "nvim" } },
+  { t: 6.7,  keys: ["Alt", "⇧", "H"], cap: "swap left",   a: { swap: true } },
+  { t: 7.8,  keys: ["Alt", "Z"],      cap: "zoom",        a: { zoom: true } },
+  { t: 9.0,  keys: ["Alt", "Z"],      cap: "unzoom",      a: { zoom: false } },
+  { t: 9.9,  keys: ["Alt", "⇧", "L"], cap: "swap back",   a: { swap: false } },
+  { t: 10.8, keys: ["Alt", "H"],      cap: "focus left",  a: { focus: "claude" }, hudDur: 0.62 },
+];
+let EV = EV_PROMO;
+const S0 = { ws: 0, focus: "claude", swapped: false, zoom: false, sidebar: "full", blocked: false, resolved: false,
+             popup: false, filter: false, query: "" };
+let SNAP = [];
+function buildSnapshots() {
+  SNAP = [{ t: -1e9, S: { ...S0 } }];
+  let S = { ...S0 };
+  for (const e of EV) {
+    S = { ...S };
+    const a = e.a;
+    if ("focus" in a) S.focus = a.focus;
+    if ("swap" in a) S.swapped = a.swap;
+    if ("zoom" in a) S.zoom = a.zoom;
+    if ("ws" in a) { S.ws = a.ws; S.zoom = false; }
+    if ("sidebar" in a) S.sidebar = a.sidebar;
+    if ("blocked" in a) S.blocked = a.blocked;
+    if ("resolved" in a) S.resolved = a.resolved;
+    if ("popup" in a) S.popup = a.popup;
+    if ("filter" in a) S.filter = a.filter;
+    if ("query" in a) S.query = a.query;
+    SNAP.push({ t: e.t, S, e });
+  }
+}
+// index of the last snapshot at/before t
+function snapAt(t) { let i = 0; for (let j = 0; j < SNAP.length; j++) if (SNAP[j].t <= t) i = j; return i; }
+
+// ---------------------------------------------------------------- geometry
+function sidebarW(S) { return S.sidebar === "compact" ? SB_COMPACT : SB_FULL; }
+function slotsOf(S, ws) {
+  if (ws === 0 && S.swapped) return { nvim: "L", codex: "TR", claude: "BR" };
+  return { claude: "L", codex: "TR", nvim: "BR" };
+}
+function paneRects(S, ws, sbw) {
+  const ax = sbw + GAP, ay = TAB_H + 6, aw = WIN.w - ax - GAP, ah = WIN.h - ay - GAP;
+  const lw = Math.round(aw * 0.54);
+  const R = {
+    L:  { x: ax, y: ay, w: lw - GAP / 2, h: ah },
+    TR: { x: ax + lw + GAP / 2, y: ay, w: aw - lw - GAP / 2, h: Math.round(ah * 0.5) - GAP / 2 },
+    BR: { x: ax + lw + GAP / 2, y: ay + Math.round(ah * 0.5) + GAP / 2, w: aw - lw - GAP / 2, h: ah - Math.round(ah * 0.5) - GAP / 2 },
+  };
+  const slots = slotsOf(S, ws), out = {};
+  for (const id of ["claude", "codex", "nvim"]) {
+    out[id] = { ...R[slots[id]], o: 1 };
+    if (S.zoom && ws === S.ws) {
+      if (id === S.focus) out[id] = { x: ax, y: ay, w: aw, h: ah, o: 1 };
+      else out[id].o = 0;
+    }
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- renderers
+function renderLines(lines, pane, S) {
+  let html = "";
+  for (const ln of lines) {
+    if (typeof ln === "string") html += M(ln) + "\n";
+    else if (ln.box) html += `<div class="box" style="border-color:${ln.color}">${ln.box.split("\n").map(M).join("\n")}</div>`;
+  }
+  return html;
+}
+function paneHTML(ws, id, r, S, t, focused) {
+  const P = PANES[ws].panes[id];
+  let lines = P.lines.slice();
+  if (P.blocked) {
+    if (S.resolved) lines = lines.concat(RESOLVED_LINES);
+    else lines = lines.concat([PROMPT_BOX]);
+  }
+  if (id === "claude" && ws === 0 && MODE === "promo") {
+    const spin = ["✻", "✳", "✶", "✢"][Math.floor(t / 0.16) % 4];
+    lines = lines.map(l => (typeof l === "string" ? l.replace("{y}✻ {s}Wiring", `{y}${spin} {s}Wiring`) : l));
+  }
+  let body = `<div class="pc">${renderLines(lines, P, S)}</div>`;
+  if (P.status) {
+    const [md, file, ft, pos] = P.status;
+    body += `<div class="status"><span class="md">${md}</span><span class="t">  ${esc(file)}</span><span class="d" style="position:absolute;right:12px">${ft} · ${pos}</span></div>`;
+  }
+  const lbl = focused ? "" : `<div class="plabel">${esc(P.label)}</div>`;
+  return `<div class="pane" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px;opacity:${r.o}">${body}</div>` +
+         `<div class="abs" style="left:${r.x}px;top:${r.y}px;opacity:${r.o}">${lbl}</div>`;
+}
+
+function renderSidebar(t, S, Sp, k, sbw) {
+  // full sidebar content fades as it collapses
+  const fullO = clamp((sbw - SB_COMPACT) / (SB_FULL - SB_COMPACT));
+  let h = `<div class="sb" style="width:${sbw}px">`;
+  // --- full content
+  h += `<div class="sbin" style="opacity:${fullO}">`;
+  h += `<div class="sbh">SPACES</div>`;
+  const ROW = 22, sy = 34;
+  // active-space highlight slides between rows
+  const wsK = eout(seg(t, SNAP[snapAt(t)].t, SNAP[snapAt(t)].t + 0.32));
+  const hy = lerp(sy + Sp.ws * ROW, sy + S.ws * ROW, Sp.ws === S.ws ? 1 : wsK);
+  h += `<div class="hl" style="top:${hy - 1}px;height:${ROW + 1}px"></div>`;
+  SPACES.forEach((sp, i) => {
+    const st = spaceStatus(i, S);
+    const pulse = st === "blocked" ? 0.55 + 0.45 * Math.abs(Math.sin(t * 4)) : 1;
+    const on = i === S.ws;
+    h += `<div class="row" style="top:${sy + i * ROW}px;height:${ROW}px;line-height:${ROW}px">` +
+         `<span class="dot" style="background:${STATUS_COLOR[st]};opacity:${pulse};box-shadow:0 0 ${st === "blocked" ? 10 : 0}px ${STATUS_COLOR[st]}"></span>` +
+         `<span class="${on ? "t bold" : "s"}">${esc(sp.name)}</span> <span class="m">${esc(sp.branch)}</span> <span class="${sp.git === "✓" ? "g" : "y"}">${esc(sp.git)}</span></div>`;
+  });
+  const ay0 = sy + SPACES.length * ROW + 18;
+  h += `<div class="sbh" style="position:absolute;top:${ay0}px">AGENTS</div>`;
+  // priority sort with animated reordering
+  const order = st => AGENTS.slice().sort((a, b) => (RANK[agentStatus(a, st)] - RANK[agentStatus(b, st)]) || (a.ws - b.ws) || a.id.localeCompare(b.id)).map(a => a.id);
+  const oPrev = order(Sp), oCur = order(S);
+  const rk = eio(seg(t, SNAP[snapAt(t)].t, SNAP[snapAt(t)].t + 0.5));
+  const AR = 40;
+  for (const a of AGENTS) {
+    const y = lerp(oPrev.indexOf(a.id), oCur.indexOf(a.id), rk) * AR + ay0 + 26;
+    const st = agentStatus(a, S);
+    const pulse = st === "blocked" ? 0.55 + 0.45 * Math.abs(Math.sin(t * 4)) : 1;
+    const bgc = st === "blocked" ? "background:rgba(237,135,150,.10);" : "";
+    h += `<div class="row" style="top:${y}px;height:${AR - 2}px;${bgc}">` +
+         `<div style="line-height:20px;padding-top:1px"><span class="dot" style="background:${STATUS_COLOR[st]};opacity:${pulse};box-shadow:0 0 ${st === "blocked" ? 10 : 0}px ${STATUS_COLOR[st]}"></span>` +
+         `<span class="s">${esc(SPACES[a.ws].name)}</span> <span class="${st === "blocked" ? "r bold" : "c"}">${esc(a.agent)}</span></div>` +
+         `<div class="dd" style="line-height:17px;padding-left:19px">${esc(a.tab)}</div></div>`;
+  }
+  h += `</div>`;
+  // --- compact rail
+  h += `<div class="rail" style="opacity:${1 - fullO}">`;
+  SPACES.forEach((sp, i) => {
+    const st = spaceStatus(i, S);
+    const on = i === S.ws;
+    h += `<div class="abs" style="left:6px;top:${16 + i * 30}px;width:32px;height:26px;border-radius:6px;${on ? "background:#363a4f;" : ""}">` +
+         `<span class="dot" style="position:absolute;left:12px;top:9px;margin:0;background:${STATUS_COLOR[st]}"></span></div>`;
+  });
+  h += `</div></div>`;
+  return h;
+}
+
+function renderTabbar(S, sbw, zoomO) {
+  const tabs = PANES[S.ws].tabs;
+  let h = `<div class="tabbar" style="left:${sbw + GAP}px">`;
+  tabs.forEach((tb, i) => { h += `<div class="tab${i === 0 ? " on" : ""}">${esc(tb)}</div>`; });
+  h += `</div><div class="tbr"><span class="zoomb" style="opacity:${zoomO}">[ZOOM]</span>14:32</div>`;
+  return h;
+}
+
+// --- cheatsheet popup (mirrors herdr/cheatsheet.py: 3 columns, "/" filter drops non-matching rows)
+const EN_TITLES = { panes: "Panes · DWM + Vim", agents: "Spaces & Agents", tabs: "Tabs", prefix: "Fallback · ^B" };
+const EN = {
+  focus_pane: "Focus pane", swap_pane: "Swap pane", resize_pane: "Resize pane", last_pane: "Last pane",
+  zoom: "Zoom pane", toggle_sidebar: "Toggle sidebar", split_vertical: "Split side by side",
+  split_horizontal: "Split stacked", close_pane: "Close pane", copy_mode: "Copy mode (Vim)",
+  edit_scrollback: "Scrollback in Neovim", switch_workspace: "Go to space 1–9",
+  "previous_workspace/next_workspace": "Prev / next space", new_workspace: "New space",
+  rename_workspace: "Rename space", next_agent: "Next agent", previous_agent: "Previous agent",
+  focus_agent: "Jump to agent by priority", open_notification_target: "Jump to blocked agent",
+  goto: "Fuzzy go-to", new_tab: "New tab", close_tab: "Close tab", rename_tab: "Rename tab",
+  switch_tab: "Go to tab 1–9", "previous_tab/next_tab": "Prev / next tab",
+  "move_tab_previous/move_tab_next": "Move tab left / right", detach: "Detach (keep alive)",
+  reload_config: "Reload config", settings: "Herdr settings", help: "Native help",
+  new_worktree: "New git worktree", workspace_picker: "Space picker", resize_mode: "Resize mode",
+};
+function enLabel(it) {
+  if (EN[it.action]) return EN[it.action];
+  if (it.action === "command") {
+    if (/Cmd\+\/|F1/.test(it.key)) return "This cheatsheet";
+    if (/\+G\b/.test(it.key)) return "Lazygit popup";
+    return "Custom command";
+  }
+  return it.action.replace(/[_/]/g, " ");
+}
+function sectionsEN() {
+  return DATA.sections.map(s => ({ ...s, title: EN_TITLES[s.id] || s.title,
+    items: s.items.map(it => ({ ...it, label: enLabel(it) })) }));
+}
+function matches(sec, it, q) {
+  q = q.toLowerCase().trim();
+  if (!q) return true;
+  return it.key.toLowerCase().includes(q) || it.label.toLowerCase().includes(q) ||
+         (it.fallback || "").toLowerCase().includes(q) || sec.title.toLowerCase().includes(q);
+}
+function renderPopup(t, S, Sp, k, appear) {
+  if (appear <= 0) return "";
+  const pw = Math.round((WIN.w) * 0.92), ph = Math.round((WIN.h) * 0.88);
+  const px = Math.round((WIN.w - pw) / 2), py = Math.round((WIN.h - ph) / 2) + 6;
+  const sc = lerp(0.965, 1, eout(appear));
+  const secs = sectionsEN();
+  const byId = Object.fromEntries(secs.map(s => [s.id, s]));
+  const colW = Math.floor((pw - 48) / 3);
+  const CH = 9.6; // ~advance of Maple Mono at 16px
+  const ROW = 31;
+  const fk = eout(seg(t, SNAP[snapAt(t)].t, SNAP[snapAt(t)].t + 0.16));
+  const vis = (sec, it) => lerp(matches(sec, it, Sp.query) ? 1 : 0, matches(sec, it, S.query) ? 1 : 0, fk);
+  const colHTML = ids => {
+    let h = "";
+    ids.forEach((sid, n) => {
+      const sec = byId[sid]; if (!sec) return;
+      const vs = sec.items.map(it => vis(sec, it));
+      const secV = Math.max(0, ...vs);
+      const gapH = n > 0 ? 14 * secV : 0;
+      h += `<div style="height:${gapH}px"></div>`;
+      h += `<div class="sec" style="height:${ROW * secV}px;line-height:${ROW}px;opacity:${secV};color:${sec.color}">▸ ${esc(sec.title)} <span class="dd" style="font-weight:400">${"─".repeat(Math.max(2, Math.floor((colW - 14 - (sec.title.length + 4 + sec.badge.length + 3) * CH) / CH)))}</span> <span class="s" style="font-weight:400">[${esc(sec.badge)}]</span></div>`;
+      sec.items.forEach((it, j) => {
+        const v = vs[j];
+        h += `<div class="it" style="height:${ROW * v}px;line-height:${ROW}px;opacity:${v}"><span class="kp" style="color:${sec.color}">${esc(it.key)}</span>` +
+             `<span style="position:absolute;left:${Math.round(colW * 0.47)}px" class="t">${esc(it.label)}</span></div>`;
+      });
+    });
+    return h;
+  };
+  const cursorOn = MODE === "gif" || Math.floor(t / 0.5) % 2 === 0;
+  const footer = S.filter
+    ? `<span class="fbar"> / ${esc(S.query)}${cursorOn ? "▌" : " "}</span>   <span class="d">[Enter] confirm   [Esc] clear</span>`
+    : `<span class="c bold">Alt</span><span class="d"> panes &amp; spaces · </span><span class="g bold">Cmd</span><span class="d"> tabs &amp; lifecycle · </span><span class="y bold">Shift</span><span class="d"> reverse / guard · </span><span class="m bold">Ctrl</span><span class="d"> left to shell &amp; Vim</span><span class="d" style="position:absolute;right:18px">[/] filter   [Esc] close</span>`;
+  return `<div class="dim" style="opacity:${eout(appear)}"></div>` +
+    `<div class="pop" style="left:${px}px;top:${py}px;width:${pw}px;height:${ph}px;opacity:${eout(appear)};transform:scale(${sc})">` +
+    `<div class="pophd"><span class="c bold">HERDR · LEADERLESS KEYMAP</span><span class="d">   3 layers · Alt / Cmd / Shift</span>` +
+    `<span class="d" style="position:absolute;right:20px">source: ~/.config/herdr/config.toml</span></div>` +
+    `<div class="col" style="left:20px;width:${colW}px;bottom:44px">${colHTML(["panes"])}</div>` +
+    `<div class="col" style="left:${24 + colW}px;width:${colW}px;bottom:44px">${colHTML(["agents"])}</div>` +
+    `<div class="col" style="left:${28 + colW * 2}px;width:${colW}px;bottom:44px">${colHTML(["tabs", "prefix"])}</div>` +
+    `<div class="popft">${footer}</div></div>`;
+}
+
+function renderToast(t, S) {
+  const tIn = 12.3, tOut = 13.45;
+  const a = eout(seg(t, tIn, tIn + 0.4)) * (1 - eout(seg(t, tOut, tOut + 0.3)));
+  if (a <= 0 || MODE !== "promo") return "";
+  const x = WIN.w - 380 - 24 + (1 - a) * 60, y = WIN.h - 100 - 24;
+  return `<div class="toast" style="left:${x}px;top:${y}px;opacity:${a}">` +
+         `<div><span class="dot" style="background:#ed8796;box-shadow:0 0 10px #ed8796"></span><span class="t bold">mobile-app · claude</span></div>` +
+         `<div class="s" style="padding-left:19px;margin-top:3px">needs your input — allow edit?</div></div>`;
+}
+
+function renderWindow(t) {
+  const i = snapAt(t);
+  const S = SNAP[i].S, Sp = SNAP[Math.max(0, i - 1)].S, t0 = SNAP[i].t;
+  const k = eio(seg(t, t0, t0 + 0.42));
+  const sbw = lerp(sidebarW(Sp), sidebarW(S), k);
+  let h = renderSidebar(t, S, Sp, k, sbw);
+  // tab bar
+  const zoomO = lerp(Sp.zoom ? 1 : 0, S.zoom ? 1 : 0, eout(seg(t, t0, t0 + 0.25)));
+  h += renderTabbar(S, sbw, zoomO);
+  // panes (crossfade across workspace switches)
+  const wsChange = Sp.ws !== S.ws;
+  const cf = wsChange ? eout(seg(t, t0, t0 + 0.3)) : 1;
+  const rPrevGeom = paneRects(Sp, Sp.ws, sbw), rCurGeom = paneRects(S, S.ws, sbw);
+  let ringA, ringB, ringLabel;
+  if (wsChange) {
+    if (cf < 1) for (const id of ["claude", "codex", "nvim"]) {
+      const r = { ...rPrevGeom[id] }; r.o *= (1 - cf);
+      h += paneHTML(Sp.ws, id, r, Sp, t, id === Sp.focus);
+    }
+    for (const id of ["claude", "codex", "nvim"]) {
+      const r = { ...rCurGeom[id] }; r.o *= cf;
+      h += paneHTML(S.ws, id, r, S, t, id === S.focus);
+    }
+    ringA = rPrevGeom[Sp.focus]; ringB = rCurGeom[S.focus];
+  } else {
+    for (const id of ["claude", "codex", "nvim"]) {
+      const a = rPrevGeom[id], b = rCurGeom[id];
+      const r = { ...lr(a, b, k), o: lerp(a.o, b.o, k) };
+      h += paneHTML(S.ws, id, r, S, t, id === S.focus || (k < .5 && id === Sp.focus));
+    }
+    ringA = rPrevGeom[Sp.focus]; ringB = rCurGeom[S.focus];
+  }
+  const ringK = eout5(seg(t, t0, t0 + 0.38));
+  const rr = lr(ringA, ringB, ringK);
+  // glow flares briefly while the focus travels
+  const flare = Math.sin(Math.PI * ringK) * (ringA === ringB ? 0 : 1);
+  const g1 = 14 + 10 * flare, g2 = 38 + 22 * flare;
+  ringLabel = PANES[S.ws].panes[S.focus].label;
+  h += `<div class="ring" style="left:${rr.x}px;top:${rr.y}px;width:${rr.w}px;height:${rr.h}px;` +
+       `box-shadow:0 0 0 1px rgba(24,236,255,.35),0 0 ${g1}px rgba(24,236,255,.62),0 0 ${g2}px rgba(24,236,255,.26),inset 0 0 18px rgba(24,236,255,.13)">` +
+       `<div class="ringlabel">${esc(ringLabel)}</div></div>`;
+  h += renderToast(t, S);
+  // popup
+  let appear = 0;
+  const popOn = SNAP.filter(s => s.e && s.e.a && "popup" in s.e.a);
+  for (const s of popOn) {
+    if (t >= s.t) appear = s.e.a.popup ? seg(t, s.t, s.t + 0.28) : 1 - seg(t, s.t, s.t + 0.22);
+  }
+  h += renderPopup(t, S, Sp, k, appear);
+  return h;
+}
+
+function renderHUD(t) {
+  const hud = $("hud");
+  let cur = null;
+  for (const s of SNAP) if (s.e && s.e.keys && t >= s.t) cur = s;
+  if (!cur) { hud.style.opacity = 0; return; }
+  const dur = cur.e.hudDur || 0.95;
+  const next = SNAP.find(s => s.e && s.e.keys && s.t > cur.t);
+  const end = Math.min(cur.t + dur, next ? next.t : 1e9);
+  const ain = seg(t, cur.t, cur.t + 0.22), aout = seg(t, end - 0.2, end);
+  const o = eout(ain) * (1 - aout);
+  if (o <= 0) { hud.style.opacity = 0; return; }
+  const press = 1 - 0.07 * Math.sin(Math.PI * seg(t, cur.t + 0.05, cur.t + 0.25));
+  const caps = cur.e.keys.map(k => `<span class="cap cy" style="transform:scale(${press})">${esc(k)}</span>`).join(`<span class="plus">+</span>`);
+  hud.innerHTML = caps + `<span class="hcap">${esc(cur.e.cap)}</span>`;
+  const sc = lerp(0.86, 1, back(ain)) * lerp(1, 0.96, aout);
+  hud.style.opacity = o;
+  const bw = hud.offsetWidth, bh = hud.offsetHeight;
+  const cy = MODE === "gif" ? WIN.y + WIN.h - bh / 2 - 26 : WIN.y + WIN.h + 2;
+  hud.style.left = (W / 2 - bw / 2) + "px";
+  hud.style.top = (cy - bh / 2 + (1 - eout(ain)) * 14) + "px";
+  hud.style.transform = `scale(${sc})`;
+}
+
+const CHAPTERS = [
+  { a: 4.35, b: 9.85,  eb: "01 · PANES",  txt: "Move like DWM. Think like Vim." },
+  { a: 10.2, b: 15.95, eb: "02 · AGENTS", txt: "A dozen agents. One glance." },
+  { a: 16.2, b: 21.25, eb: "03 · RECALL", txt: "Forgot a key? Press ⌘ /" },
+];
+function renderChapter(t) {
+  const el = $("chapter");
+  if (MODE !== "promo") { el.style.opacity = 0; return; }
+  const c = CHAPTERS.find(c => t >= c.a - 0.01 && t <= c.b + 0.4);
+  if (!c) { el.style.opacity = 0; return; }
+  const o = eout(seg(t, c.a, c.a + 0.45)) * (1 - seg(t, c.b, c.b + 0.35));
+  el.innerHTML = `<span class="eb">${c.eb}</span>${esc(c.txt)}`;
+  el.style.opacity = o;
+  el.style.transform = `translateY(${(1 - eout(seg(t, c.a, c.a + 0.45))) * 10}px)`;
+}
+
+// ---------------------------------------------------------------- per-scene
+const TITLE_WORDS = [["Ditch", ""], ["the", ""], ["Prefix", "accent"], ["Key.", "accent"]];
+function renderS1(t) {
+  const s1 = $("s1");
+  if (MODE !== "promo" || t > 4.2) { s1.style.opacity = 0; return; }
+  const out = seg(t, 3.05, 3.65);
+  s1.style.opacity = 1 - eio(out);
+  s1.style.transform = `translateY(${-36 * eio(out)}px) scale(${1 - 0.03 * out})`;
+  s1.style.filter = `blur(${6 * out}px)`;
+  const pill = s1.querySelector(".pill");
+  const pa = eout(seg(t, 0.35, 0.95));
+  pill.style.opacity = pa; pill.style.transform = `translateY(${(1 - pa) * 12}px)`;
+  const spans = $("title").children;
+  for (let i = 0; i < spans.length; i++) {
+    const a = eout(seg(t, 0.6 + i * 0.13, 1.25 + i * 0.13));
+    spans[i].style.opacity = a;
+    spans[i].style.transform = `translateY(${(1 - a) * 34}px)`;
+    spans[i].style.filter = `blur(${(1 - a) * 10}px)`;
+  }
+  const sa = eout(seg(t, 1.35, 1.95));
+  $("subtitle").style.opacity = sa; $("subtitle").style.transform = `translateY(${(1 - sa) * 14}px)`;
+  const ka = eout(seg(t, 1.85, 2.3));
+  $("oldcombo").style.opacity = ka * lerp(1, 0.38, eout(seg(t, 2.35, 2.7)));
+  $("strike").style.width = `calc(100% + 20px)`;
+  $("strike").style.transform = `scaleX(${eout(seg(t, 2.3, 2.6))})`;
+  const na = eout(seg(t, 2.55, 2.95));
+  $("arrow").style.opacity = na;
+  $("newcombo").style.opacity = na; $("newcombo").style.transform = `translateX(${(1 - na) * -16}px) scale(${lerp(.9, 1, back(seg(t, 2.55, 2.95)))})`;
+}
+
+let WALL_W = 4608, WALL_H = 2592;
+function renderS5(t) {
+  const wall = $("wall"), cap = $("cap5"), sh = $("shade5"), end = $("end");
+  if (MODE !== "promo" || t < 21.5) { wall.style.opacity = 0; cap.style.opacity = 0; sh.style.opacity = 0; end.style.opacity = 0; return; }
+  // camera: whole wallpaper -> push in toward the cheatsheet card
+  const base = W / WALL_W;
+  // hold the full view while the caption is up, then push in toward the card
+  const z = lerp(1.0, 1.06, seg(t, 21.9, 24.2)) * lerp(1.0, 1.3, eio(seg(t, 24.0, 26.2)));
+  const fx = 0.70, fy = 0.42; // zoom anchor (fraction of the frame / wallpaper)
+  const s = base * z;
+  const tx = W * fx * (1 - z);
+  const ty = H * fy * (1 - z);
+  const blurE = seg(t, 25.25, 26.0);
+  wall.style.transform = `translate(${tx}px,${ty}px) scale(${s})`;
+  wall.style.opacity = eout(seg(t, 21.65, 22.45));
+  wall.style.filter = `blur(${18 * eio(blurE)}px) brightness(${lerp(1, 0.42, eio(blurE))})`;
+  sh.style.opacity = eout(seg(t, 22.2, 22.8)) * (1 - seg(t, 24.4, 25.0));
+  const ca = eout(seg(t, 22.45, 23.05)) * (1 - eio(seg(t, 24.35, 24.8)));
+  cap.style.opacity = ca; cap.style.transform = `translateY(${(1 - eout(seg(t, 22.45, 23.05))) * 18}px)`;
+  const ea = eout(seg(t, 25.55, 26.25));
+  end.style.opacity = ea; end.style.transform = `translateY(${(1 - ea) * 18}px) scale(${lerp(.985, 1, ea)})`;
+  const chips = end.querySelectorAll(".chip");
+  chips.forEach((c, i) => { const a = eout(seg(t, 25.95 + i * 0.12, 26.45 + i * 0.12)); c.style.opacity = a; c.style.transform = `translateY(${(1 - a) * 12}px)`; });
+  const u = eout(seg(t, 26.5, 27.0)); end.querySelector(".url").style.opacity = u;
+}
+
+// ---------------------------------------------------------------- main seek
+function seek(t) {
+  if (MODE === "gif") {
+    $("bg").style.opacity = 0; $("bgshade").style.opacity = 0; $("grain").style.opacity = 0; $("fade").style.opacity = 0;
+  } else {
+    const bgIn = eout(seg(t, 0, 1.2));
+    $("bg").style.opacity = t < 22.4 ? 1 : 1 - seg(t, 22.4, 22.8);
+    $("bg").style.transform = `scale(${lerp(1.1, 1.0, eout(seg(t, 0, 6)))})`;
+    $("bg").style.filter = `blur(${lerp(0, 3, eio(seg(t, 3.2, 4.4)))}px) brightness(${lerp(1, 0.72, eio(seg(t, 3.2, 4.4)))})`;
+    $("fade").style.opacity = (1 - bgIn) + eio(seg(t, 27.6, 28.0)) * 0.85;
+  }
+  renderS1(t);
+  renderChapter(t);
+  // window visibility
+  const win = $("win");
+  let wo = 1, wty = 0, wsc = 1, wbl = 0;
+  if (MODE === "promo") {
+    const a = eout5(seg(t, 3.3, 4.3)), b = eio(seg(t, 21.3, 22.0));
+    wo = a * (1 - b); wty = (1 - a) * 70 - b * 30; wsc = lerp(0.955, 1, a) * lerp(1, 0.96, b); wbl = 8 * b;
+  }
+  win.style.left = WIN.x + "px"; win.style.top = WIN.y + "px";
+  win.style.width = WIN.w + "px"; win.style.height = WIN.h + "px";
+  win.style.opacity = wo;
+  win.style.transform = `translateY(${wty}px) scale(${wsc})`;
+  win.style.filter = wbl > 0 ? `blur(${wbl}px)` : "none";
+  if (wo > 0) $("ui").innerHTML = renderWindow(t);
+  renderHUD(t);
+  if (wo <= 0) $("hud").style.opacity = 0;
+  renderS5(t);
+}
+
+// ---------------------------------------------------------------- init (called by render-promo.mjs)
+async function init(opts) {
+  MODE = opts.mode || "promo";
+  DATA = opts.data;
+  W = opts.width || 1920; H = opts.height || 1080;
+  if (MODE === "gif") {
+    WIN = { x: 14, y: 14, w: W - 28, h: H - 28 };
+    EV = EV_GIF;
+    $("stage").style.background = "#1e2030";
+    $("winbg").style.display = "none"; // flat colors keep the 256-color GIF clean and small
+  }
+  buildSnapshots();
+  $("title").innerHTML = TITLE_WORDS.map(([w, c]) => `<span class="${c}">${w}</span>`).join("");
+  $("winbg").style.backgroundImage = `url("${opts.bg}")`;
+  const loads = [];
+  const bg = $("bg"); bg.src = opts.bg; loads.push(bg.decode());
+  if (opts.wall) { const wall = $("wall"); wall.src = opts.wall; loads.push(wall.decode().then(() => { WALL_W = wall.naturalWidth; WALL_H = wall.naturalHeight; wall.style.width = WALL_W + "px"; wall.style.height = WALL_H + "px"; })); }
+  await Promise.all(loads);
+  await document.fonts.load('700 20px "Maple Mono NF CN"');
+  await document.fonts.load('400 20px "Maple Mono NF CN"');
+  await document.fonts.ready;
+  seek(0);
+  return { mode: MODE, events: EV.length };
+}
+window.init = init; window.seek = seek;
+</script>
+</body>
+</html>
