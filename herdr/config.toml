@@ -37,8 +37,9 @@ copy_on_select = false
 show_agent_labels_on_pane_borders = true
 pane_scrollbars = false
 sidebar_collapsed_mode = "compact"
-sidebar_width = 34        # Wide enough for clean titles on high-DPI displays
-sidebar_max_width = 44
+sidebar_min_width = 32    # Prevent auto-scaling from squeezing workspace names
+sidebar_width = 36        # Wide enough for clean titles on high-DPI displays
+sidebar_max_width = 48
 # hide_tab_bar_when_single_tab = true
 
 tab_bar_right = [
@@ -47,13 +48,14 @@ tab_bar_right = [
 ]
 
 [ui.sidebar.spaces]
-row_gap = 0   # Compact single-row workspaces to maximize room for the Agents list
+row_gap = 1   # Blank row between spaces for clean visual separation
 rows = [
-  ["state_icon", "workspace", "branch", "git_status"],
+  ["state_icon", "workspace"],
+  [{ token = "branch", dim = true }, "git_status"],
 ]
 
 [ui.sidebar.agents]
-row_gap = 0   # Dimmed second row separates entries cleanly without blank gaps
+row_gap = 1   # Blank row between agent entries for clearer scannability
 rows = [
   ["state_icon", "workspace", "agent"],
   [{ token = "tab", dim = true }],
